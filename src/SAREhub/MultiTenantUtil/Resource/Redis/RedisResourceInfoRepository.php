@@ -6,11 +6,11 @@ namespace SAREhub\MultiTenantUtil\Resource\Redis;
 
 use Predis\Client;
 use Predis\Collection\Iterator\Keyspace;
+use SAREhub\MultiTenantUtil\Resource\NotFoundResourceInfoException;
 use SAREhub\MultiTenantUtil\Resource\ResourceInfo;
-use SAREhub\MultiTenantUtil\Resource\ResourceNotFoundException;
-use SAREhub\MultiTenantUtil\Resource\ResourceRepository;
+use SAREhub\MultiTenantUtil\Resource\ResourceInfoRepository;
 
-abstract class RedisResourceRepository implements ResourceRepository
+class RedisResourceInfoRepository implements ResourceInfoRepository
 {
 
     const KEY_FORMAT = "%s:%s";
@@ -25,12 +25,17 @@ abstract class RedisResourceRepository implements ResourceRepository
      */
     private $keyPrefix;
 
-    public function __construct(Client $redisClient, string $keyPrefix)
+    /**
+     * @var string
+     */
+    private $resourceTypeName;
+
+    public function __construct(Client $redisClient, string $keyPrefix, string $resourceTypeName)
     {
         $this->redisClient = $redisClient;
         $this->keyPrefix = $keyPrefix;
+        $this->resourceTypeName = $resourceTypeName;
     }
-
 
     public function insert(ResourceInfo $resource)
     {
@@ -42,16 +47,16 @@ abstract class RedisResourceRepository implements ResourceRepository
     /**
      * @param string $id
      * @return ResourceInfo
-     * @throws ResourceNotFoundException
+     * @throws NotFoundResourceInfoException
      */
     public function find(string $id): ResourceInfo
     {
         $data = $this->getRedisClient()->hgetall($this->getPrefixedKey($id));
         if (empty($data)) {
-            throw new ResourceNotFoundException($this->getResourceTypeName(), $id);
+            throw new NotFoundResourceInfoException($this->getResourceTypeName(), $id);
         }
 
-        return $this->deserializeResource($data);
+        return $this->deserializeResource($id, $data);
     }
 
     public function findAll(): array
@@ -59,7 +64,9 @@ abstract class RedisResourceRepository implements ResourceRepository
         $it = new Keyspace($this->getRedisClient(), $this->getPrefixedKey("*"));
         $resources = [];
         foreach ($it as $key) {
-            $resources[] = $this->deserializeResource($this->getRedisClient()->hgetall($key));
+            $id = $this->getIdFromKey($key);
+            $fields = $this->getRedisClient()->hgetall($key);
+            $resources[] = $this->deserializeResource($id, $fields);
         }
         return $resources;
     }
@@ -69,13 +76,24 @@ abstract class RedisResourceRepository implements ResourceRepository
         $this->getRedisClient()->del([$this->getPrefixedKey($resource->getId())]);
     }
 
-    protected abstract function serializeResource(ResourceInfo $resource): array;
+    function serializeResource(ResourceInfo $resource): array
+    {
+        return $resource->getFields();
+    }
 
-    protected abstract function deserializeResource(array $data);
+    protected function deserializeResource(string $id, array $fields)
+    {
+        return new ResourceInfo($id, $fields);
+    }
 
     public function getRedisClient(): Client
     {
         return $this->redisClient;
+    }
+
+    private function getIdFromKey(string $key): string
+    {
+        return explode(":", $key)[1];
     }
 
     public function getPrefixedKey(string $id): string
@@ -88,5 +106,8 @@ abstract class RedisResourceRepository implements ResourceRepository
         return $this->keyPrefix;
     }
 
-    public abstract function getResourceTypeName(): string;
+    public function getResourceTypeName(): string
+    {
+        return $this->resourceTypeName;
+    }
 }

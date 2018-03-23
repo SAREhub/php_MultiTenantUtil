@@ -4,14 +4,14 @@
 namespace SAREhub\MultiTenantUtil\Resource;
 
 
-interface ResourceRepository
+interface ResourceInfoRepository
 {
     public function insert(ResourceInfo $resource);
 
     /**
      * @param string $id
      * @return ResourceInfo
-     * @throws ResourceNotFoundException
+     * @throws NotFoundResourceInfoException
      */
     public function find(string $id): ResourceInfo;
 
