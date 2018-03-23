@@ -4,20 +4,21 @@ namespace SAREhub\MultiTenantUtil\Resource\Redis;
 
 use SAREhub\MultiTenantUtil\RedisTestCase;
 use SAREhub\MultiTenantUtil\Resource\AccountSharedResourceInfo;
-use SAREhub\MultiTenantUtil\Resource\ResourceNotFoundException;
+use SAREhub\MultiTenantUtil\Resource\NotFoundResourceInfoException;
+use SAREhub\MultiTenantUtil\Resource\ResourceInfo;
 
-class RedisAccountSharedResourceRepositoryITest extends RedisTestCase
+class RedisResourceInfoRepositoryITest extends RedisTestCase
 {
 
     /**
-     * @var RedisSharedResourceRepository
+     * @var RedisResourceInfoRepository
      */
     private $repository;
 
     protected function setUp()
     {
         parent::setUp();
-        $this->repository = new RedisAccountSharedResourceRepository($this->redisClient, "test_prefix");
+        $this->repository = new RedisResourceInfoRepository($this->redisClient, "test_prefix", "test_resource_type");
     }
 
     public function testFindWhenExists()
@@ -29,8 +30,8 @@ class RedisAccountSharedResourceRepositoryITest extends RedisTestCase
     public function testFindWhenNotExists()
     {
         $resId = "test_id";
-        $this->expectException(ResourceNotFoundException::class);
-        $this->expectExceptionMessage("Resource of type 'AccountSharedResource' and id 'test_id' not found");
+        $this->expectException(NotFoundResourceInfoException::class);
+        $this->expectExceptionMessage("Resource of type 'test_resource_type' and id 'test_id' not found");
         $this->repository->find($resId);
     }
 
@@ -54,15 +55,15 @@ class RedisAccountSharedResourceRepositoryITest extends RedisTestCase
         $this->assertEquals([], $this->repository->findAll());
     }
 
-    private function insertResourceToRepository(): AccountSharedResourceInfo
+    private function insertResourceToRepository(): ResourceInfo
     {
         $res = $this->createResource();
         $this->repository->insert($res);
         return $res;
     }
 
-    private function createResource(): AccountSharedResourceInfo
+    private function createResource(): ResourceInfo
     {
-        return new AccountSharedResourceInfo("test_id", "test_shared_resource_id");
+        return new ResourceInfo("test_id", ["field" => "value"]);
     }
 }

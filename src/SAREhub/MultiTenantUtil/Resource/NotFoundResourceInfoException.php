@@ -4,7 +4,7 @@
 namespace SAREhub\MultiTenantUtil\Resource;
 
 
-class ResourceNotFoundException extends \Exception
+class NotFoundResourceInfoException extends \Exception
 {
     private $resourceType;
     private $resourceId;
