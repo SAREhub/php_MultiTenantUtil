@@ -44,14 +44,13 @@ class RedisResourceInfoRepositoryITest extends RedisTestCase
     public function testRemoveWhenExists()
     {
         $res = $this->insertResourceToRepository();
-        $this->repository->remove($res);
+        $this->repository->delete($res->getId());
         $this->assertEquals([], $this->repository->findAll());
     }
 
     public function testRemoveWhenNotExists()
     {
-        $host = $this->createResource();
-        $this->repository->remove($host);
+        $this->repository->delete("not_exists_id");
         $this->assertEquals([], $this->repository->findAll());
     }
 

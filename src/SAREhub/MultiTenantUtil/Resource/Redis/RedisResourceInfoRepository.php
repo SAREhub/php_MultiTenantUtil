@@ -71,9 +71,9 @@ class RedisResourceInfoRepository implements ResourceInfoRepository
         return $resources;
     }
 
-    public function remove(ResourceInfo $resource)
+    public function delete(string $id)
     {
-        $this->getRedisClient()->del([$this->getPrefixedKey($resource->getId())]);
+        $this->getRedisClient()->del([$this->getPrefixedKey($id)]);
     }
 
     function serializeResource(ResourceInfo $resource): array
