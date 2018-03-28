@@ -20,5 +20,5 @@ interface ResourceInfoRepository
      */
     public function findAll(): array;
 
-    public function remove(ResourceInfo $resource);
+    public function delete(string $id);
 }
