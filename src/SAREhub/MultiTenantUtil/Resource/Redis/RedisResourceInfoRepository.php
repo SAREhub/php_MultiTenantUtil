@@ -6,8 +6,10 @@ namespace SAREhub\MultiTenantUtil\Resource\Redis;
 
 use Predis\Client;
 use Predis\Collection\Iterator\Keyspace;
-use SAREhub\MultiTenantUtil\Resource\NotFoundResourceInfoException;
+use Predis\Transaction\MultiExec;
 use SAREhub\MultiTenantUtil\Resource\ResourceInfo;
+use SAREhub\MultiTenantUtil\Resource\ResourceInfoExistsException;
+use SAREhub\MultiTenantUtil\Resource\ResourceInfoNotFoundException;
 use SAREhub\MultiTenantUtil\Resource\ResourceInfoRepository;
 
 class RedisResourceInfoRepository implements ResourceInfoRepository
@@ -41,19 +43,40 @@ class RedisResourceInfoRepository implements ResourceInfoRepository
     {
         $key = $this->getPrefixedKey($resource->getId());
         $data = $this->serializeResource($resource);
-        $this->getRedisClient()->hmset($key, $data);
+
+        $options = ["cas" => true, "watch" => $key, "retry" => 0];
+
+        $this->redisClient->transaction($options, function (MultiExec $tx) use ($key, $resource, $data) {
+            if ($tx->exists($key)) {
+                throw new ResourceInfoExistsException($this->getResourceTypeName(), $resource->getId());
+            }
+            $tx->multi();
+            $tx->hmset($key, $data);
+        });
+    }
+
+    public function replace(ResourceInfo $resource)
+    {
+        $key = $this->getPrefixedKey($resource->getId());
+        $data = $this->serializeResource($resource);
+        $this->redisClient->hmset($key, $data);
+    }
+
+    public function exists(string $id): bool
+    {
+        return (bool)$this->redisClient->exists($this->getPrefixedKey($id));
     }
 
     /**
      * @param string $id
      * @return ResourceInfo
-     * @throws NotFoundResourceInfoException
+     * @throws ResourceInfoNotFoundException
      */
     public function find(string $id): ResourceInfo
     {
         $data = $this->getRedisClient()->hgetall($this->getPrefixedKey($id));
         if (empty($data)) {
-            throw new NotFoundResourceInfoException($this->getResourceTypeName(), $id);
+            throw new ResourceInfoNotFoundException($this->getResourceTypeName(), $id);
         }
 
         return $this->deserializeResource($id, $data);

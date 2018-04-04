@@ -4,16 +4,11 @@
 namespace SAREhub\MultiTenantUtil\Resource;
 
 
-class NotFoundResourceInfoException extends \Exception
+class ResourceInfoNotFoundException extends ResourceInfoException
 {
     private $resourceType;
     private $resourceId;
 
-    /**
-     *
-     * @param $resourceType
-     * @param $resourceId
-     */
     public function __construct(string $resourceType, string $resourceId)
     {
         parent::__construct("Resource of type '$resourceType' and id '$resourceId' not found");
